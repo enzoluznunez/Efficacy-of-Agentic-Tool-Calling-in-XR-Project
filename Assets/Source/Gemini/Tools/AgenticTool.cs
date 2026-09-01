@@ -7,17 +7,7 @@ using UnityEngine.Profiling;
 
 public abstract class AgenticTool : Function {
 
-    public static int InvocationCount { get; private set; }
-
-    public static int RefusalCount { get; private set; }
-
-    public static Action<string> AfterToolRun;
-
-    private static int executionCounter;
-
     private static int refreshedAxes;
-
-    public static int ExecutionCount => executionCounter;
 
     protected abstract void Run(Dictionary<string, object> args, Dictionary<string, object> result);
 
@@ -43,7 +33,6 @@ public abstract class AgenticTool : Function {
         int editsBefore = 0, editsAfter = 0;
 
         await MainThread.Run(() => {
-            executionCounter++;
             var run = System.Diagnostics.Stopwatch.StartNew();
             Profiler.BeginSample(sample);
             toolName = Declaration.Name;
@@ -72,8 +61,6 @@ public abstract class AgenticTool : Function {
                 run.Stop();
                 runMs = run.ElapsedMilliseconds;
             }
-            try { AfterToolRun?.Invoke(toolName); }
-            catch (Exception hookError) { UnityEngine.Debug.LogError(hookError); }
         });
         total.Stop();
 
@@ -88,9 +75,6 @@ public abstract class AgenticTool : Function {
 
         UnityEngine.Debug.Log($"[Gemini][tool] {toolName} args={Brief(args)} -> {Brief(result)} " +
             $"({total.ElapsedMilliseconds} ms, run {runMs} ms, edits {editsBefore}->{editsAfter})");
-
-        InvocationCount++;
-        if (IsRefusal(result)) RefusalCount++;
 
         return result;
     }

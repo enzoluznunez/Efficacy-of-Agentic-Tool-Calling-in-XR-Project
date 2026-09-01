@@ -55,9 +55,6 @@ public static partial class Gemini {
     private static int toolRoundId;
     private static volatile bool resumedConnection;
     private static bool webSearchEnabled;
-    private static volatile bool micSuppressed;
-    private static int turnCounter;
-    private static int generationCounter;
 
     private static volatile bool keepAlive;
     private static volatile bool goAwayPending;
@@ -72,22 +69,12 @@ public static partial class Gemini {
     private const int GoAwayGraceMs = 8000;
     private const int PreviousDrainMs = 5000;
 
-    public static bool Refreshing => refreshing;
     public static bool Busy => generationActive || turnPending || injecting || refreshing;
     public static GeminiStatus Status => _status;
-    public static long LastPromptTokens => lastLoggedPromptTokens;
-    public static int TurnCount => Volatile.Read(ref turnCounter);
-
-    public static int GenerationCount => Volatile.Read(ref generationCounter);
     public static int ActiveConnection => Volatile.Read(ref activeConnection);
     public static int ToolRoundId => Volatile.Read(ref toolRoundId);
 
-    private static int pushCounter;
-    public static int PushCount => Volatile.Read(ref pushCounter);
-    private static void NotePushSent() => Interlocked.Increment(ref pushCounter);
-
     public static void RequestActionPush() => actionSignal?.Release();
-    public static void SetMicSuppressed(bool value) => micSuppressed = value;
     public static void SetKeepAlive(bool value) {
         keepAlive = value;
         if (value) actionSignal?.Release();
@@ -217,8 +204,6 @@ public static partial class Gemini {
     private static Task initTask;
     private static readonly object initGate = new object();
 
-    public static bool Initialised => client != null;
-
     public static Task EnsureInit(bool webSearch) {
         lock (initGate) {
             if (initTask == null) initTask = Init(webSearch);
@@ -309,15 +294,6 @@ public static partial class Gemini {
         SetBudget(trigger, target);
         ResetWindow();
         RebuildConfig();
-    }
-
-    public static void RefreshConfig() => RebuildConfig();
-
-    public static void ForgetSession() {
-        resumeHandle = null;
-        lastInactiveUtc = default;
-        ResetWindow();
-        StateChannel.ClearPending();
     }
 
     public static void Destroy() {

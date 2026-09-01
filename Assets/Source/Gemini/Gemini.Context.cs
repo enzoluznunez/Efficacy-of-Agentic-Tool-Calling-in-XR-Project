@@ -27,18 +27,9 @@ public static partial class Gemini {
     private static long sessionPromptTokens;
     private static long sessionUncachedTokens;
     private static long lastExactContext;
-    private static long sessionCachedTokens;
-    private static long sessionThoughtTokens;
 
-    public static long ContextTokens => contextTokens;
-    public static long SessionPromptTokens => sessionPromptTokens;
-    public static long SessionUncachedTokens => sessionUncachedTokens;
-    public static long SessionCachedTokens => sessionCachedTokens;
-
-    public static void AddUsage(long uncached, long cached, long thoughts) {
+    public static void AddUsage(long uncached) {
         if (uncached > 0) sessionUncachedTokens += uncached;
-        if (cached > 0) sessionCachedTokens += cached;
-        if (thoughts > 0) sessionThoughtTokens += thoughts;
     }
 
     private static volatile bool exhausted;
@@ -114,8 +105,6 @@ public static partial class Gemini {
         sessionPromptTokens = 0;
         sessionUncachedTokens = 0;
         lastExactContext = 0;
-        sessionCachedTokens = 0;
-        sessionThoughtTokens = 0;
         Interlocked.Exchange(ref toolRoundsThisTurn, 0);
     }
 

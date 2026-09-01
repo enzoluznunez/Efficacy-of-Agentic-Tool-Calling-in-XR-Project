@@ -121,12 +121,3 @@ ProjectSettings/AI.Assistant/
 # Unity crash-recovery scene dumps
 /[Aa]ssets/_Recovery/
 /[Aa]ssets/_Recovery.meta
-
-# Participant data never enters this repo; only benchmark results are tracked
-# (Benchmarking Agentic Tool Calling/results/ is the tracked home for those)
-studylogs/
-study-data/
-moderator-sheets/
-
-# Benchmark logs live in Unity's persistentDataPath; archived copies under
-# Study/results/ are tracked so a published number stays reproducible.

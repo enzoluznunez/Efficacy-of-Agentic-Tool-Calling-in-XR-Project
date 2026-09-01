@@ -103,7 +103,7 @@ public static partial class Gemini {
         long cachedTok = (long?)usage.CachedContentTokenCount ?? 0;
         long thoughtTok = (long?)usage.ThoughtsTokenCount ?? 0;
         long uncachedTok = promptTok > cachedTok ? promptTok - cachedTok : 0;
-        AddUsage(uncachedTok, cachedTok, thoughtTok);
+        AddUsage(uncachedTok);
         int rounds = Volatile.Read(ref toolRoundsThisTurn);
         bool usable = TrackContext(conn, promptTok, rounds, out long context, out bool exact);
         string how = exact ? "exact" : $"estimated over {rounds} tool rounds";
@@ -193,8 +193,6 @@ public static partial class Gemini {
             return;
         }
 
-        if (content.GenerationComplete == true) Interlocked.Increment(ref generationCounter);
-
         if (content.TurnComplete == true) {
             generationActive = false;
             turnPending = false;
@@ -207,7 +205,6 @@ public static partial class Gemini {
             FlushUtterance(outTranscript, outWords, "model_utterance");
             pendingUserFlush = false;
             lastUserText = null;
-            Interlocked.Increment(ref turnCounter);
             Interlocked.Exchange(ref toolRoundsThisTurn, 0);
             AgentTurn.Clear();
             if (ConsumeShutdownRequest())

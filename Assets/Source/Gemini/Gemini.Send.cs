@@ -24,7 +24,6 @@ public static partial class Gemini {
     }
 
     private static void sendTick(byte[] data) {
-        if (micSuppressed) return;
         if (data == null || data.Length == 0) return;
 
         rawFrames++;
@@ -208,7 +207,6 @@ public static partial class Gemini {
                     },
                     TurnComplete = false
                 }).ConfigureAwait(false);
-                NotePushSent();
             }
             catch (Exception e) {
                 Debug.LogWarning($"[Gemini][push] failed: {e.Message}");
