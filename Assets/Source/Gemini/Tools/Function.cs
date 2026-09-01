@@ -10,6 +10,7 @@ using UnityEngine;
 
 public abstract class Function {
     public abstract FunctionDeclaration Declaration { get; }
+    public string Name { get; private set; }
     protected abstract Task<Dictionary<string, object>> Execute(Dictionary<string, object> args);
 
     public virtual bool IsAvailable() => true;
@@ -63,8 +64,8 @@ public abstract class Function {
 
     private static Task Respond(AsyncSession session, FunctionCall call, Dictionary<string, object> result) {
         try {
-            string json = JsonSerializer.Serialize(result);
-            Gemini.NoteProtocol($"toolResponse {call.Name} id={call.Id} {json.Length}B :: {(json.Length > 400 ? json.Substring(0, 400) : json)}");
+            string head = BriefJson(result, 400, out long totalBytes);
+            Gemini.NoteProtocol($"toolResponse {call.Name} id={call.Id} {totalBytes}B :: {head}");
         }
         catch (Exception e) { Gemini.NoteProtocol($"toolResponse {call.Name} SERIALIZE-FAIL {e.Message}"); }
         return session.SendToolResponseAsync(new LiveSendToolResponseParameters {
@@ -90,6 +91,46 @@ public abstract class Function {
                 return list;
             default: return value;
         }
+    }
+
+    protected static string BriefJson(object value, int maxBytes, out long totalBytes) {
+        var sink = new TruncatingStream(maxBytes);
+        using (var writer = new Utf8JsonWriter(sink))
+            JsonSerializer.Serialize(writer, value);
+        totalBytes = sink.Total;
+        return sink.Head;
+    }
+
+    // Keeps only the first maxBytes of what is written but counts everything, so a
+    // large result is never materialised as a full string just to be truncated.
+    private sealed class TruncatingStream : System.IO.Stream {
+        private readonly byte[] head;
+        private int headLen;
+        private long total;
+
+        public TruncatingStream(int maxBytes) { head = new byte[maxBytes]; }
+
+        public long Total => total;
+        public string Head => System.Text.Encoding.UTF8.GetString(head, 0, headLen);
+
+        public override void Write(byte[] buffer, int offset, int count) {
+            int keep = Math.Min(count, head.Length - headLen);
+            if (keep > 0) {
+                Buffer.BlockCopy(buffer, offset, head, headLen, keep);
+                headLen += keep;
+            }
+            total += count;
+        }
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => total;
+        public override long Position { get => total; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, System.IO.SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
     }
 
     static Dictionary<string, Function> registry;
@@ -118,6 +159,7 @@ public abstract class Function {
             if (registry.ContainsKey(name))
                 Debug.LogError($"[Function] duplicate tool name '{name}'; {type.Name} overwrites the earlier registration.");
 
+            instance.Name = name;
             registry[name] = instance;
         }
         Debug.Log($"[Function] registered {registry.Count} tools");

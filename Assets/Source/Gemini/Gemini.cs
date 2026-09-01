@@ -50,7 +50,6 @@ public static partial class Gemini {
     private static int activeConnection;
     private static volatile string resumeHandle;
 
-    private static long lastLoggedPromptTokens = -1;
     private static int toolRoundsThisTurn;
     private static int toolRoundId;
     private static volatile bool resumedConnection;
@@ -71,7 +70,6 @@ public static partial class Gemini {
 
     public static bool Busy => generationActive || turnPending || injecting || refreshing;
     public static GeminiStatus Status => _status;
-    public static int ActiveConnection => Volatile.Read(ref activeConnection);
     public static int ToolRoundId => Volatile.Read(ref toolRoundId);
 
     public static void RequestActionPush() => actionSignal?.Release();

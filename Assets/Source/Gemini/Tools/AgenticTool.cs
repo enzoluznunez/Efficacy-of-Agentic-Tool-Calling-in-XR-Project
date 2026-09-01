@@ -9,6 +9,12 @@ public abstract class AgenticTool : Function {
 
     private static int refreshedAxes;
 
+    private readonly string sample;
+
+    protected AgenticTool() {
+        sample = "GeminiTool." + GetType().Name;
+    }
+
     protected abstract void Run(Dictionary<string, object> args, Dictionary<string, object> result);
 
     private static readonly string[] RefusalKeys =
@@ -26,8 +32,6 @@ public abstract class AgenticTool : Function {
 
     protected override async Task<Dictionary<string, object>> Execute(Dictionary<string, object> args) {
         var result = new Dictionary<string, object>();
-        string sample = "GeminiTool." + GetType().Name;
-        string toolName = null;
         var total = System.Diagnostics.Stopwatch.StartNew();
         long runMs = 0;
         int editsBefore = 0, editsAfter = 0;
@@ -35,13 +39,12 @@ public abstract class AgenticTool : Function {
         await MainThread.Run(() => {
             var run = System.Diagnostics.Stopwatch.StartNew();
             Profiler.BeginSample(sample);
-            toolName = Declaration.Name;
             StateChannel.InAgentCall = true;
-            AgentTurn.NoteToolCall();
-            Scene.Sort?.CompleteOrderSequence();
-            editsBefore = ManageDatasets.ActiveEdits != null ? ManageDatasets.ActiveEdits.Count : 0;
-            refreshedAxes = 0;
             try {
+                AgentTurn.NoteToolCall();
+                Scene.Sort?.CompleteOrderSequence();
+                editsBefore = ManageDatasets.ActiveEdits != null ? ManageDatasets.ActiveEdits.Count : 0;
+                refreshedAxes = 0;
                 Run(args ?? new Dictionary<string, object>(), result);
             }
             catch (Exception e) {
@@ -73,7 +76,7 @@ public abstract class AgenticTool : Function {
                 result["note"] = "Nothing changed; the sheet is already the way this call would leave it.";
         }
 
-        UnityEngine.Debug.Log($"[Gemini][tool] {toolName} args={Brief(args)} -> {Brief(result)} " +
+        UnityEngine.Debug.Log($"[Gemini][tool] {Name} args={Brief(args)} -> {Brief(result)} " +
             $"({total.ElapsedMilliseconds} ms, run {runMs} ms, edits {editsBefore}->{editsAfter})");
 
         return result;
@@ -82,8 +85,8 @@ public abstract class AgenticTool : Function {
     private static string Brief(Dictionary<string, object> map) {
         if (map == null || map.Count == 0) return "{}";
         try {
-            string json = JsonSerializer.Serialize(map);
-            return json.Length > 300 ? json.Substring(0, 300) + "..." : json;
+            string head = BriefJson(map, 300, out long totalBytes);
+            return totalBytes > 300 ? head + "..." : head;
         }
         catch (Exception e) { return "<unserializable: " + e.Message + ">"; }
     }

@@ -54,7 +54,7 @@ public static partial class Gemini {
                 await FinalizeForRefresh().ConfigureAwait(false);
                 seeded = !string.IsNullOrEmpty(EpisodicMemory.Summary);
             }
-            Debug.Log($"[Gemini][window] refreshing session at {contextTokens} context tokens (raw prompt {lastLoggedPromptTokens}, summarySeeded={seeded})");
+            Debug.Log($"[Gemini][window] refreshing session at {contextTokens} context tokens (raw prompt {lastPromptTokens}, summarySeeded={seeded})");
             RefreshSession();
             int waited = 0;
             while (_status != GeminiStatus.Live && waited < 15000) {
@@ -183,10 +183,7 @@ public static partial class Gemini {
             ResetWindow();
         }
 
-        if (Exhausted) {
-            ClearExhaustion();
-            lastLoggedPromptTokens = -1;
-        }
+        if (Exhausted) ClearExhaustion();
 
         _status = GeminiStatus.Connecting;
         shutdownAfterTurn = false;

@@ -27,10 +27,7 @@ public static partial class Gemini {
     private static long sessionPromptTokens;
     private static long sessionUncachedTokens;
     private static long lastExactContext;
-
-    public static void AddUsage(long uncached) {
-        if (uncached > 0) sessionUncachedTokens += uncached;
-    }
+    private static long lastPromptTokens = -1;
 
     private static volatile bool exhausted;
     private static volatile bool exhaustWarned;
@@ -105,16 +102,18 @@ public static partial class Gemini {
         sessionPromptTokens = 0;
         sessionUncachedTokens = 0;
         lastExactContext = 0;
+        lastPromptTokens = -1;
         Interlocked.Exchange(ref toolRoundsThisTurn, 0);
     }
 
-    private static bool TrackContext(int conn, long promptTokens, int rounds, out long context, out bool exact) {
+    private static bool TrackContext(int conn, long promptTokens, long uncachedTokens, int rounds, out long context, out bool exact) {
         if (conn != usageConnection) {
             usageConnection = conn;
             if (!resumedConnection) contextTokens = 0;
         }
 
         if (promptTokens > 0) sessionPromptTokens += promptTokens;
+        if (uncachedTokens > 0) sessionUncachedTokens += uncachedTokens;
 
         exact = rounds <= 0;
         context = contextTokens;
@@ -127,8 +126,8 @@ public static partial class Gemini {
         return true;
     }
 
-    public static void ObserveTokens(long context, bool exact) {
-        if (exact) ObserveCeiling(context);
+    public static void ObserveTokens(long context) {
+        ObserveCeiling(context);
         ObserveRefresh(context);
         ObserveCompaction(context);
     }

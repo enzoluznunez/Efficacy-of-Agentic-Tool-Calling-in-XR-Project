@@ -103,19 +103,18 @@ public static partial class Gemini {
         long cachedTok = (long?)usage.CachedContentTokenCount ?? 0;
         long thoughtTok = (long?)usage.ThoughtsTokenCount ?? 0;
         long uncachedTok = promptTok > cachedTok ? promptTok - cachedTok : 0;
-        AddUsage(uncachedTok);
         int rounds = Volatile.Read(ref toolRoundsThisTurn);
-        bool usable = TrackContext(conn, promptTok, rounds, out long context, out bool exact);
+        bool usable = TrackContext(conn, promptTok, uncachedTok, rounds, out long context, out bool exact);
         string how = exact ? "exact" : $"estimated over {rounds} tool rounds";
 
         Debug.Log($"[Gemini][usage] conn={conn} context={context} ({how}) prompt={promptTok} response={usage.ResponseTokenCount} total={usage.TotalTokenCount} session={sessionPromptTokens} cached={cachedTok} uncached={uncachedTok} thoughts={thoughtTok} sessionUncached={sessionUncachedTokens} promptByModality=[{byMod}] at {DateTime.UtcNow:HH:mm:ss.fff}");
 
-        if (promptTok != lastLoggedPromptTokens) lastLoggedPromptTokens = promptTok;
+        lastPromptTokens = promptTok;
         if (exact && lastExactContext > 0 && context + 2000 < lastExactContext)
             Debug.Log($"[Gemini][window] context fell {lastExactContext} -> {context}; the server trimmed it");
         if (exact) lastExactContext = context;
 
-        if (usable) ObserveTokens(context, exact);
+        if (usable) ObserveTokens(context);
     }
 
     private static void HandleControl(AsyncSession s, LiveServerMessage response) {
