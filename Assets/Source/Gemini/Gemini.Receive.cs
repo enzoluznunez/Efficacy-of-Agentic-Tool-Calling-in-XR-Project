@@ -89,16 +89,12 @@ public static partial class Gemini {
         if (usage == null) return;
 
         string byMod = "";
-        long promptText = 0;
         var details = usage.PromptTokensDetails;
         if (details != null) {
             var modParts = new List<string>();
             foreach (var d in details) {
                 if (d == null) continue;
-                string modality = $"{d.Modality}";
-                modParts.Add($"{modality}:{d.TokenCount}");
-                if (modality.IndexOf("TEXT", StringComparison.OrdinalIgnoreCase) >= 0)
-                    promptText = (long?)d.TokenCount ?? 0;
+                modParts.Add($"{d.Modality}:{d.TokenCount}");
             }
             byMod = string.Join(", ", modParts);
         }
