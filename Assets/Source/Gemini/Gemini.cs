@@ -147,11 +147,6 @@ public static partial class Gemini {
 
             Debug.LogError($"[Gemini][stall] no tool response was ever sent for {call.Name} " +
                            $"(id={pair.Key}) after {ToolStallMs / 1000}s; the turn cannot complete");
-            StudyLog.Event("tool_response_missing", new Dictionary<string, object> {
-                { "tool", call.Name },
-                { "id", pair.Key },
-                { "waitedMs", (long)(now - call.SentUtc).TotalMilliseconds }
-            });
         }
     }
 
@@ -222,53 +217,6 @@ public static partial class Gemini {
     private static Task initTask;
     private static readonly object initGate = new object();
 
-    private static volatile bool awaitingFirstAudio;
-    private static float intentAtMs;
-    private static string intentArm = "unknown";
-
-    public static void NoteIntent(string arm) {
-        intentArm = arm;
-        intentAtMs = StudyLog.RealtimeMs;
-        awaitingFirstAudio = true;
-
-        bool live = _status == GeminiStatus.Live;
-        awaitingReady = !live;
-
-        StudyLog.Event("intent", new Dictionary<string, object> {
-            { "arm", arm },
-            { "initialised", Initialised },
-            { "status", _status.ToString() }
-        });
-
-        if (live)
-            StudyLog.Event("session_ready", new Dictionary<string, object> {
-                { "arm", arm },
-                { "readyMs", 0d },
-                { "alreadyLive", true }
-            });
-    }
-
-    private static volatile bool awaitingReady;
-
-    private static void NoteSessionReady() {
-        if (!awaitingReady) return;
-        awaitingReady = false;
-        StudyLog.Event("session_ready", new Dictionary<string, object> {
-            { "arm", intentArm },
-            { "readyMs", System.Math.Round(StudyLog.RealtimeMs - intentAtMs, 1) },
-            { "alreadyLive", false }
-        });
-    }
-
-    private static void NoteFirstAudio() {
-        if (!awaitingFirstAudio) return;
-        awaitingFirstAudio = false;
-        StudyLog.Event("first_audio", new Dictionary<string, object> {
-            { "arm", intentArm },
-            { "sinceIntentMs", System.Math.Round(StudyLog.RealtimeMs - intentAtMs, 1) }
-        });
-    }
-
     public static bool Initialised => client != null;
 
     public static Task EnsureInit(bool webSearch) {
@@ -280,22 +228,17 @@ public static partial class Gemini {
 
     public static async Task Init(bool webSearch) {
         var clock = System.Diagnostics.Stopwatch.StartNew();
-        StudyLog.Event("init_begin");
         try {
             webSearchEnabled = webSearch;
             var keyTask = loadApiKey();
             var micTask = ensureMicPermission();
-            HitchLog.Mark("Gemini.ClientInit");
             client = new Client(apiKey: await keyTask);
             EpisodicMemory.Init(client);
             ResetWindow();
 
-            HitchLog.Mark("Gemini.ConfigBuild");
             RebuildConfig();
 
-            HitchLog.Mark("Gemini.MicPermission");
             micGranted = await micTask;
-            HitchLog.Mark("Gemini.MicPermissionDone");
             if (!micGranted) {
                 Debug.LogWarning("[Gemini] Microphone permission denied; voice input disabled.");
                 _status = GeminiStatus.MicDenied;
@@ -314,10 +257,6 @@ public static partial class Gemini {
             _status = GeminiStatus.Failed;
         }
         clock.Stop();
-        StudyLog.Event("init_end", new Dictionary<string, object> {
-            { "ms", clock.ElapsedMilliseconds },
-            { "micGranted", micGranted }
-        });
         Debug.Log($"[Gemini] init took {clock.ElapsedMilliseconds} ms");
     }
 
@@ -379,7 +318,6 @@ public static partial class Gemini {
         lastInactiveUtc = default;
         ResetWindow();
         StateChannel.ClearPending();
-        StudyLog.Event("session_forgotten");
     }
 
     public static void Destroy() {
@@ -416,7 +354,6 @@ public static partial class Gemini {
     }
 
     public static void Listen() {
-        HitchLog.Mark("Gemini.Listen");
         if (!micGranted) {
             _status = GeminiStatus.MicDenied;
             return;
@@ -429,7 +366,6 @@ public static partial class Gemini {
             Speaker.start();
             Voip.start();
         });
-        HitchLog.Mark("Gemini.Listen.Done");
     }
 
     public static void Mute() {

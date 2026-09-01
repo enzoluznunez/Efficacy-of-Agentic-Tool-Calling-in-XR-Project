@@ -248,9 +248,6 @@ public abstract class PanelUI : MonoBehaviour
         BoxCollider box = grabCollider as BoxCollider;
         if (box == null) return false;
 
-        using var span = StudySpan.Begin("grab_bounds");
-        span.Detail("panel", name);
-
         Transform space = box.transform;
         if (!UIMeasure.TryLocalBounds(CanvasRect, rects, space, out Vector3 center, out Vector3 size)) return false;
 

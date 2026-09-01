@@ -162,7 +162,6 @@ public class ManageDatasets : MonoBehaviour
 
     public void SwitchDataset(int index)
     {
-        HitchLog.Mark($"SwitchDataset {index}");
         if (index < 0 || index >= _datasets.Count || index == _active) return;
         if (_datasets[index].source == null)
         {

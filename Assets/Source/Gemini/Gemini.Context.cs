@@ -150,10 +150,6 @@ public static partial class Gemini {
 
         exhaustWarned = true;
         Debug.LogWarning($"[Gemini][window] approaching context ceiling: {context} of {ExhaustTokens}");
-        StudyLog.Event("context_warning", new Dictionary<string, object> {
-            { "contextTokens", context },
-            { "ceiling", ExhaustTokens }
-        });
         Interlocked.Exchange(ref pendingClosingNotice, 1);
     }
 
@@ -177,11 +173,6 @@ public static partial class Gemini {
         if (exhausted) return;
         exhausted = true;
         Debug.LogWarning($"[Gemini][window] context ceiling reached: {context} >= {ExhaustTokens}");
-        StudyLog.Event("context_exhausted", new Dictionary<string, object> {
-            { "contextTokens", context },
-            { "ceiling", ExhaustTokens },
-            { "memoryLayer", MemoryConfig.MemoryLayerEnabled }
-        });
         resumeHandle = null;
         RetireConnection();
         var s = liveSession;
@@ -214,14 +205,6 @@ public static partial class Gemini {
             }
 
             Debug.Log($"[Gemini][window] summary updated: folded {foldCount} lines, {rendered.Length} chars, at {contextTokens} context tokens");
-            StudyLog.Event("summary_update", new Dictionary<string, object> {
-                { "foldedLines", foldCount },
-                { "summaryChars", rendered.Length },
-                { "contextTokens", contextTokens },
-                { "promptTokens", lastLoggedPromptTokens },
-                { "summary", rendered },
-                { "summaryJson", json }
-            });
         }
         catch (Exception e) {
             Debug.LogWarning($"[Gemini][window] compaction failed: {e.Message}");

@@ -124,11 +124,6 @@ public class DataPanelUI : PanelUI, IDataPanel
         bool last = _gridRetries >= UILayout.SettlePasses;
         if (_grid.Rebuild(_source, ActiveSheet, last) || last)
         {
-            if (_gridRetries > 0)
-                StudyLog.Event("grid_settled", new Dictionary<string, object> {
-                    { "retries", _gridRetries },
-                    { "forced", last }
-                });
             _gridDirty = false;
             _gridRetries = 0;
             return;
@@ -541,7 +536,6 @@ public class DataPanelUI : PanelUI, IDataPanel
             return;
         }
 
-        HitchLog.Mark("DataPanel.Show");
         ShowCanvas();
         FlushPending();
         RefreshPanelSize();
@@ -674,12 +668,6 @@ public class DataPanelUI : PanelUI, IDataPanel
                 return true;
             }
 
-            using var span = StudySpan.Begin("grid_rebuild");
-            span.Detail("rows", rows);
-            span.Detail("cols", cols);
-            span.Detail("cells", rows * cols);
-            span.Detail("forced", force);
-
             _corner = MakeLabel(_frozenCorner, CellKind.Corner);
             _corner.text = _source.RowAxisTitle ?? "";
 
@@ -697,12 +685,7 @@ public class DataPanelUI : PanelUI, IDataPanel
                 _rowLabels[r].text = _source.TitleAt(false, rowMin + r) ?? "";
             }
 
-            if (!FitColumnsToTitles() && !force)
-            {
-                span.Detail("outcome", "remeasure");
-                return false;
-            }
-            span.Detail("outcome", "built");
+            if (!FitColumnsToTitles() && !force) return false;
 
             float width = ColumnLeft(cols + 1);
             float height = RowTop(rows + 1);

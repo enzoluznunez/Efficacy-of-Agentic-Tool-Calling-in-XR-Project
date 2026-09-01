@@ -16,9 +16,6 @@ public static class Notices
     public static void Show(MonoBehaviour host, string title, string message)
     {
         StateChannel.Record("Notice", message);
-        StudyLog.Event("notice", new System.Collections.Generic.Dictionary<string, object> {
-            { "title", title }, { "message", message }
-        });
 
         if (Time.frameCount == _lastToastFrame) return;
         _lastToastFrame = Time.frameCount;

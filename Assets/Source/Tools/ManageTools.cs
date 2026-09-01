@@ -23,7 +23,6 @@ public class ManageTools : MonoBehaviour
 
     public void SelectTool(ToolType tool)
     {
-        HitchLog.Mark($"SelectTool {tool}");
         if (UserDriven) AgentTurn.UserTookControl("tool changed");
         ToolType next = SelectedTool == tool ? ToolType.None : tool;
         if (next == SelectedTool) return;

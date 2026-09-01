@@ -163,7 +163,6 @@ public class Watch : MonoBehaviour
         if (geminiClient.Active == active) return;
         if (!active && cause != AssistantCause.Agent) AgentTurn.UserTookControl("assistant off");
         if (!active) Notices.HideNotice();
-        if (active && cause == AssistantCause.User) Gemini.NoteIntent(geminiClient.ArmLabel);
         geminiClient.SetActive(active);
         ReportActivation(active, cause);
         RaiseAssistantChanged();
@@ -177,12 +176,6 @@ public class Watch : MonoBehaviour
 
         if (cause == AssistantCause.Failure) StateChannel.SetState("assistant", what);
         else StateChannel.RecordState("assistant", what);
-
-        StudyLog.Event("assistant_toggle", new Dictionary<string, object> {
-            { "active", active },
-            { "cause", cause.ToString() },
-            { "status", Gemini.Status.ToString() }
-        });
     }
 
     private void RaiseAssistantChanged()

@@ -288,7 +288,6 @@ public class ToolPanelUI : PanelUI
         RectTransform gridRect = _toolGrid.transform as RectTransform;
         if (gridRect == null || _panelRootRect == null) return;
 
-        using var span = StudySpan.Begin("tool_tiles_fit");
         LayoutRebuilder.ForceRebuildLayoutImmediate(_panelRootRect);
 
         int columns = Mathf.Max(1, _toolGrid.constraintCount);
@@ -574,7 +573,6 @@ public class ToolPanelUI : PanelUI
 
     private void RefreshOptionCards()
     {
-        HitchLog.Mark("ToolPanel.RefreshCards");
         ToolType selected = toolManager != null ? toolManager.SelectedTool : ToolType.None;
         bool assistantPane = AssistantPaneWanted();
 
@@ -675,9 +673,6 @@ public class ToolPanelUI : PanelUI
     {
         if (_stack.Count == 0) return;
 
-        using var span = StudySpan.Begin("option_cards_resize");
-        span.Detail("cards", _stack.Count);
-
         RectTransform canvas = CanvasRect;
         if (canvas != null) LayoutRebuilder.ForceRebuildLayoutImmediate(canvas);
         SizeCardsToContent();
@@ -688,7 +683,6 @@ public class ToolPanelUI : PanelUI
     {
         SizeCardsToContent();
         LayoutOptionCards();
-        HitchLog.Mark("ToolPanel.CardsSized");
 
         if (!isActiveAndEnabled) return;
         if (_resizeRoutine != null) StopCoroutine(_resizeRoutine);
@@ -731,7 +725,6 @@ public class ToolPanelUI : PanelUI
     public override void ShowPanel()
     {
         if (_canvas == null) return;
-        HitchLog.Mark("ToolPanel.Show");
         ShowCanvas();
         QueueFitTiles();
         PanelGuard.ClearToolPanel();

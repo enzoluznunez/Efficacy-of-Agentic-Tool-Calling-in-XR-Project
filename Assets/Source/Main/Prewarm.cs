@@ -68,7 +68,6 @@ public class Prewarm : MonoBehaviour
     private IEnumerator Start()
     {
         yield return null;
-        HitchLog.Mark("Prewarm.Begin");
 
         GameObject rig = BuildWarmRig();
 
@@ -95,7 +94,6 @@ public class Prewarm : MonoBehaviour
         if (tooltip != null) tooltip.PrewarmCanvas(false);
         if (rig != null) Destroy(rig);
 
-        HitchLog.Mark("Prewarm.Done");
         Destroy(gameObject);
     }
 

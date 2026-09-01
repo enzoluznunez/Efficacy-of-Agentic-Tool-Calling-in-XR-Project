@@ -285,7 +285,6 @@ public class Tooltip : MonoBehaviour
     {
         if (_bodyLabel == null) return Borders + ContentTop + ContentBottom;
 
-        using var span = StudySpan.Begin("tooltip_measure");
         if (_canvasRect != null) LayoutRebuilder.ForceRebuildLayoutImmediate(_canvasRect);
         _bodyLabel.ForceMeshUpdate();
         float width = _bodyLabel.rectTransform.rect.width;

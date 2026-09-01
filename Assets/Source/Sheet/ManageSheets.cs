@@ -162,10 +162,6 @@ public class ManageSheets : MonoBehaviour
         DataSource data = _bound;
         if (data == null || !data.IsLoaded) { ClearProjection(); ClearSheets(); return; }
 
-        HitchLog.Mark("Sheets.RebuildAll");
-        using var span = StudySpan.Begin("sheets_rebuild_all");
-        span.Detail("pieces", _sheets.Count);
-
         _rowCount = data.RowOrder.Count;
         _colCount = data.ColumnOrder.Count;
         if (_rowCount == 0 || _colCount == 0) { ClearProjection(); ClearSheets(); return; }

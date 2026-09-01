@@ -39,10 +39,6 @@ public static class StateChannel
 
         if (Suppressed) return;
 
-        StudyLog.Event("user_action", new Dictionary<string, object> {
-            { "source", source },
-            { "what", what }
-        });
         _userQueue.Add(what);
         while (_userQueue.Count > MaxUserQueue) _userQueue.RemoveAt(0);
         EpisodicMemory.Record("user_action", what);

@@ -70,7 +70,6 @@ public static partial class Gemini {
 
         injecting = true;
         try {
-            int execSeq = AgenticTool.ExecutionCount;
             ResetMicAccumulator();
             while (sendQueue.TryDequeue(out _)) { }
 
@@ -86,17 +85,10 @@ public static partial class Gemini {
             }).ConfigureAwait(false);
 
             turnPending = true;
-            StudyLog.Event("prompt_injected", new Dictionary<string, object> {
-                { "text", text },
-                { "toolRoundId", ToolRoundId },
-                { "execSeq", execSeq },
-                { "promptTokens", SessionPromptTokens }
-            });
             return true;
         }
         catch (Exception e) {
             Debug.LogWarning($"[Gemini][inject] failed: {e.Message}");
-            StudyLog.Event("prompt_inject_failed", new Dictionary<string, object> { { "error", e.Message } });
             return false;
         }
         finally {
@@ -217,14 +209,9 @@ public static partial class Gemini {
                     TurnComplete = false
                 }).ConfigureAwait(false);
                 NotePushSent();
-                StudyLog.Event("push", new Dictionary<string, object> {
-                    { "text", text },
-                    { "turnsSincePush", TurnCount }
-                });
             }
             catch (Exception e) {
                 Debug.LogWarning($"[Gemini][push] failed: {e.Message}");
-                StudyLog.Event("push_failed", new Dictionary<string, object> { { "error", e.Message } });
             }
         }
     }

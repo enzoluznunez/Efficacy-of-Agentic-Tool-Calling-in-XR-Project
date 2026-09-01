@@ -29,7 +29,6 @@ public static partial class Gemini {
             goAwayPending = false;
             NoteProtocol($"-> goAway reconnect (quiet={quiet})");
             Debug.Log($"[Gemini][session] cycling socket after GoAway (quiet={quiet})");
-            StudyLog.Event("go_away_reconnect", new Dictionary<string, object> { { "quiet", quiet } });
             try { await s.CloseAsync().ConfigureAwait(false); } catch { }
             return;
         }
@@ -56,13 +55,6 @@ public static partial class Gemini {
                 seeded = !string.IsNullOrEmpty(EpisodicMemory.Summary);
             }
             Debug.Log($"[Gemini][window] refreshing session at {contextTokens} context tokens (raw prompt {lastLoggedPromptTokens}, summarySeeded={seeded})");
-            StudyLog.Event("session_refresh", new Dictionary<string, object> {
-                { "contextTokensBefore", contextTokens },
-                { "promptTokensBefore", lastLoggedPromptTokens },
-                { "summarySeeded", seeded },
-                { "summary", MemoryConfig.MemoryLayerEnabled ? EpisodicMemory.Summary : "" },
-                { "facts", MemoryConfig.MemoryLayerEnabled ? SemanticMemory.FactsSnapshot() : new List<string>() }
-            });
             RefreshSession();
             int waited = 0;
             while (_status != GeminiStatus.Live && waited < 15000) {
@@ -109,17 +101,10 @@ public static partial class Gemini {
                 s = await client.Live.ConnectAsync(model: ModelId, config: config).ConfigureAwait(false);
                 if (!Current(gen)) break;
                 _status = GeminiStatus.Live;
-                NoteSessionReady();
                 liveSession = s;
                 int conn = Interlocked.Increment(ref connectionCounter);
                 Volatile.Write(ref activeConnection, conn);
                 Debug.Log($"[Gemini][session] live (gen={gen}, conn={conn}, resumed={resumeHandle != null}, contextBefore={contextTokens})");
-                StudyLog.Event("session_connected", new Dictionary<string, object> {
-                    { "connection", conn },
-                    { "resumed", resumeHandle != null },
-                    { "contextTokensBefore", contextTokens },
-                    { "promptTokensBefore", lastLoggedPromptTokens }
-                });
 
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 var send = SendPump(s, token);
@@ -207,9 +192,7 @@ public static partial class Gemini {
         shutdownAfterTurn = false;
 
         Task previous = sessionTask;
-        HitchLog.Mark("Gemini.Connect.Cancel");
         sessionCts?.Cancel();
-        HitchLog.Mark("Gemini.Connect.Cancelled");
         int gen = Interlocked.Increment(ref sessionGeneration);
         var cts = new CancellationTokenSource();
         sessionCts = cts;
@@ -233,11 +216,9 @@ public static partial class Gemini {
     }
 
     public static void Disconnect() {
-        HitchLog.Mark("Gemini.Disconnect");
         Mute();
         RetireConnection();
         Interlocked.Increment(ref sessionGeneration);
-        HitchLog.Mark("Gemini.Disconnect.Cancel");
         CancellationTokenSource cts = sessionCts;
         sessionCts = null;
         if (cts != null)
@@ -245,7 +226,6 @@ public static partial class Gemini {
                 try { cts.Cancel(); }
                 catch (ObjectDisposedException) { }
             });
-        HitchLog.Mark("Gemini.Disconnect.CancelQueued");
         lastInactiveUtc = DateTime.UtcNow;
         if (_status != GeminiStatus.MicDenied && _status != GeminiStatus.Failed)
             _status = GeminiStatus.Off;

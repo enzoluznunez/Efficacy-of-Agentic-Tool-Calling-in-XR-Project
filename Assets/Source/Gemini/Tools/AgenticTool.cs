@@ -24,9 +24,6 @@ public abstract class AgenticTool : Function {
     private static readonly string[] RefusalKeys =
         { "error", "preconditionUnmet", "needsSheet", "needsChoice" };
 
-    private static readonly string[] StatusKeys =
-        { "ok", "changed", "error", "preconditionUnmet", "needsSheet", "needsChoice" };
-
     protected static bool IsRefusal(Dictionary<string, object> result) {
         for (int i = 0; i < RefusalKeys.Length; i++)
             if (result.ContainsKey(RefusalKeys[i])) return true;
@@ -45,9 +42,8 @@ public abstract class AgenticTool : Function {
         long runMs = 0;
         int editsBefore = 0, editsAfter = 0;
 
-        int executionSeq = 0;
         await MainThread.Run(() => {
-            executionSeq = ++executionCounter;
+            executionCounter++;
             var run = System.Diagnostics.Stopwatch.StartNew();
             Profiler.BeginSample(sample);
             toolName = Declaration.Name;
@@ -96,18 +92,6 @@ public abstract class AgenticTool : Function {
         InvocationCount++;
         if (IsRefusal(result)) RefusalCount++;
 
-        StudyLog.Event("tool_call", new Dictionary<string, object> {
-            { "tool", toolName },
-            { "round", Gemini.ToolRoundId },
-            { "seq", executionSeq },
-            { "args", args },
-            { "result", ResultStatus(result) },
-            { "data", LoggableData(result) },
-            { "totalMs", total.ElapsedMilliseconds },
-            { "runMs", runMs },
-            { "editsBefore", editsBefore },
-            { "editsAfter", editsAfter }
-        });
         return result;
     }
 
@@ -121,30 +105,6 @@ public abstract class AgenticTool : Function {
     }
 
     protected static Schema ParametersFor(System.Type args) => ToolArguments.Schema(args);
-
-    private const int MaxLoggedDataChars = 4000;
-
-    private static object LoggableData(Dictionary<string, object> result) {
-        try {
-            string json = JsonSerializer.Serialize(result);
-            if (json.Length <= MaxLoggedDataChars) return result;
-            return new Dictionary<string, object> {
-                { "logTruncated", true },
-                { "chars", json.Length },
-                { "keys", new List<string>(result.Keys) }
-            };
-        }
-        catch (Exception e) {
-            return new Dictionary<string, object> { { "unserializable", e.Message } };
-        }
-    }
-
-    private static Dictionary<string, object> ResultStatus(Dictionary<string, object> result) {
-        var status = new Dictionary<string, object>();
-        foreach (var key in StatusKeys)
-            if (result.TryGetValue(key, out var v)) status[key] = v;
-        return status;
-    }
 
     protected static bool TryResolveTargetBounds(int? sheet, Dictionary<string, object> result,
         out int rowMin, out int rowMax, out int colMin, out int colMax, out int pieceId) {

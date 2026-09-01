@@ -30,7 +30,6 @@ public class ColorTool : ToolOptions
 
     private bool _stroking;
     private CreateSheet _strokeSheet;
-    private float _strokeStart;
     private readonly HashSet<long> _strokeVisited = new HashSet<long>();
     private readonly List<ColorCell> _strokeCells = new List<ColorCell>();
 
@@ -84,7 +83,6 @@ public class ColorTool : ToolOptions
         sheetManager.SetCellTint(reading.cube);
         _stroking = true;
         _strokeSheet = reading.sheet;
-        _strokeStart = Time.realtimeSinceStartup;
         Paint(reading.cube);
     }
 
@@ -112,7 +110,7 @@ public class ColorTool : ToolOptions
         _stroking = false;
         _strokeSheet = null;
 
-        if (commit) CommitStroke(new List<ColorCell>(_strokeCells), true);
+        if (commit) CommitStroke(new List<ColorCell>(_strokeCells));
         _strokeVisited.Clear();
         _strokeCells.Clear();
     }
@@ -150,7 +148,7 @@ public class ColorTool : ToolOptions
 
         if (cells.Count == 0) return 0;
         sheetManager.AddCellColorsSwept(toPaint, CurrentColor);
-        CommitStroke(cells, false);
+        CommitStroke(cells);
         return cells.Count;
     }
 
@@ -162,18 +160,10 @@ public class ColorTool : ToolOptions
         return new ColorCell { dataRow = dataRow, dataCol = dataCol, prevColorHex = prevHex };
     }
 
-    private void CommitStroke(List<ColorCell> cells, bool byHand)
+    private void CommitStroke(List<ColorCell> cells)
     {
         ManageDatasets.ActiveEdits.PushColorStroke(CurrentColorName,
             "#" + ColorUtility.ToHtmlStringRGB(CurrentColor), cells);
-
-        StudyLog.Event("color_stroke", new Dictionary<string, object>
-        {
-            { "color", CurrentColorName },
-            { "cells", cells.Count },
-            { "byHand", byHand },
-            { "durationMs", byHand ? (int)((Time.realtimeSinceStartup - _strokeStart) * 1000f) : 0 }
-        });
 
         Report(cells.Count == 1
             ? $"colored the cell at {CellLabel(cells[0])} {CurrentColorName}"

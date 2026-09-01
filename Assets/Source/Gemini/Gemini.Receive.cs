@@ -36,16 +36,6 @@ public static partial class Gemini {
         string text = buf.ToString().Trim();
         buf.Clear();
 
-        var timings = new List<object>(words.Count);
-        for (int i = 0; i < words.Count; i++) {
-            var w = words[i];
-            if (w == null || string.IsNullOrEmpty(w.Word)) continue;
-            timings.Add(new Dictionary<string, object> {
-                { "w", w.Word },
-                { "s", w.StartOffset },
-                { "e", w.EndOffset }
-            });
-        }
         words.Clear();
 
         if (text.Length == 0) return;
@@ -54,10 +44,6 @@ public static partial class Gemini {
             if (text == lastUserText) return;
             lastUserText = text;
         }
-
-        var payload = new Dictionary<string, object> { { "text", text } };
-        if (timings.Count > 0) payload["words"] = timings;
-        StudyLog.Event(type, payload);
 
         Debug.Log($"[Gemini][{(type == "user_utterance" ? "user" : "ada")}] {Spoken(text)}");
 
@@ -73,13 +59,6 @@ public static partial class Gemini {
             catch (Exception e) {
                 Debug.LogError($"[Gemini] receive failed: {e.Message}");
                 Debug.LogError($"[Gemini][diag] setupCompleted={setupCompleted}; recent protocol:\n  {DumpProtocol()}");
-                StudyLog.Event("socket_closed", new Dictionary<string, object> {
-                    { "error", e.Message },
-                    { "setupCompleted", setupCompleted },
-                    { "generationActive", generationActive },
-                    { "injecting", injecting },
-                    { "recentProtocol", new List<object>(protocolLog.ToArray()) }
-                });
                 break;
             }
             if (response == null) break;
@@ -127,7 +106,6 @@ public static partial class Gemini {
         long promptTok = (long?)usage.PromptTokenCount ?? 0;
         long cachedTok = (long?)usage.CachedContentTokenCount ?? 0;
         long thoughtTok = (long?)usage.ThoughtsTokenCount ?? 0;
-        long toolPromptTok = (long?)usage.ToolUsePromptTokenCount ?? 0;
         long uncachedTok = promptTok > cachedTok ? promptTok - cachedTok : 0;
         AddUsage(uncachedTok, cachedTok, thoughtTok);
         int rounds = Volatile.Read(ref toolRoundsThisTurn);
@@ -136,25 +114,7 @@ public static partial class Gemini {
 
         Debug.Log($"[Gemini][usage] conn={conn} context={context} ({how}) prompt={promptTok} response={usage.ResponseTokenCount} total={usage.TotalTokenCount} session={sessionPromptTokens} cached={cachedTok} uncached={uncachedTok} thoughts={thoughtTok} sessionUncached={sessionUncachedTokens} promptByModality=[{byMod}] at {DateTime.UtcNow:HH:mm:ss.fff}");
 
-        if (promptTok != lastLoggedPromptTokens) {
-            lastLoggedPromptTokens = promptTok;
-            StudyLog.Event("usage", new Dictionary<string, object> {
-                { "connection", conn },
-                { "contextTokens", context },
-                { "exact", exact },
-                { "toolRounds", rounds },
-                { "promptTokens", promptTok },
-                { "totalTokens", (long?)usage.TotalTokenCount ?? 0 },
-                { "sessionPromptTokens", sessionPromptTokens },
-                { "cachedTokens", cachedTok },
-                { "thoughtTokens", thoughtTok },
-                { "toolUsePromptTokens", toolPromptTok },
-                { "uncachedPromptTokens", uncachedTok },
-                { "sessionUncachedTokens", sessionUncachedTokens },
-                { "sessionCachedTokens", sessionCachedTokens },
-                { "promptByModality", byMod }
-            });
-        }
+        if (promptTok != lastLoggedPromptTokens) lastLoggedPromptTokens = promptTok;
         if (exact && lastExactContext > 0 && context + 2000 < lastExactContext)
             Debug.Log($"[Gemini][window] context fell {lastExactContext} -> {context}; the server trimmed it");
         if (exact) lastExactContext = context;
@@ -175,7 +135,6 @@ public static partial class Gemini {
 
         if (response.GoAway != null) {
             Debug.Log($"[Gemini] server GoAway (time left: {response.GoAway.TimeLeft})");
-            StudyLog.Event("go_away", new Dictionary<string, object> { { "timeLeft", $"{response.GoAway.TimeLeft}" } });
             if (keepAlive) BeginGoAwayReconnect();
             else _ = s.CloseAsync();
         }
@@ -213,9 +172,6 @@ public static partial class Gemini {
             string asked = queries != null ? string.Join(" | ", queries) : "";
             NoteProtocol($"<- groundingMetadata queries=[{asked}]");
             Debug.Log($"[Gemini][search] grounded; webSearchQueries=[{asked}]");
-            StudyLog.Event("web_search", new Dictionary<string, object> {
-                { "queries", queries != null ? new List<object>(queries) : new List<object>() }
-            });
         }
 
         var inTx = content.InputTranscription;
@@ -241,10 +197,7 @@ public static partial class Gemini {
             return;
         }
 
-        if (content.GenerationComplete == true) {
-            Interlocked.Increment(ref generationCounter);
-            StudyLog.Event("generation_complete");
-        }
+        if (content.GenerationComplete == true) Interlocked.Increment(ref generationCounter);
 
         if (content.TurnComplete == true) {
             generationActive = false;
@@ -252,10 +205,7 @@ public static partial class Gemini {
             NoteProtocol("<- turnComplete");
 
             var reason = content.TurnCompleteReason;
-            if (reason != null) {
-                NoteProtocol($"<- turnCompleteReason {reason}");
-                StudyLog.Event("turn_complete_reason", new Dictionary<string, object> { { "reason", $"{reason}" } });
-            }
+            if (reason != null) NoteProtocol($"<- turnCompleteReason {reason}");
 
             FlushUtterance(inTranscript, inWords, "user_utterance");
             FlushUtterance(outTranscript, outWords, "model_utterance");
@@ -281,7 +231,6 @@ public static partial class Gemini {
             var data = parts[i].InlineData;
             if (data?.Data != null && data.Data.Length > 0 &&
                 data.MimeType != null && data.MimeType.StartsWith("audio/pcm")) {
-                NoteFirstAudio();
                 Speaker.write(data.Data);
             }
         }

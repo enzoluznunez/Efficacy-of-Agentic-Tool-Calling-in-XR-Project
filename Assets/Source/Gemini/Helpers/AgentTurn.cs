@@ -41,11 +41,6 @@ public static class AgentTurn
         int stamped = ManageDatasets.ActiveEdits.StampGroup(BaselineOf(ManageDatasets.ActiveEdits));
         if (stamped <= 0) return;
 
-        StudyLog.Event("agent_interrupted", new Dictionary<string, object> {
-            { "reason", reason },
-            { "applied", stamped }
-        });
-
         StateChannel.Record("Assistant",
             $"the user stopped you after {stamped} of your changes had been applied");
 

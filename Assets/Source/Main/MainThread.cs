@@ -31,11 +31,6 @@ public class MainThread : MonoBehaviour {
     }
 
     private void Update() {
-        int drained = 0;
-        while (queue.TryDequeue(out var action)) {
-            action();
-            drained++;
-        }
-        if (drained > 0) HitchLog.Mark($"MainThread x{drained}");
+        while (queue.TryDequeue(out var action)) action();
     }
 }

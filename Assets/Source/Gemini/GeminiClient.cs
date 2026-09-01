@@ -29,7 +29,6 @@ public class GeminiClient : MonoBehaviour {
 
     public bool Ready => _ready;
     public bool Active => _active;
-    public string ArmLabel => $"{initPolicy}/{connectPolicy}";
     public event Action<bool> ActiveChanged;
     public event Action<GeminiStatus> StatusChanged;
     public event Action ContextWarning;
@@ -53,7 +52,6 @@ public class GeminiClient : MonoBehaviour {
         await Gemini.EnsureInit(enableWebSearch);
         if (this == null || !isActiveAndEnabled) return;
 
-        HitchLog.Mark($"Gemini.Connect.{reason}");
         Gemini.Connect();
         if (_active) Gemini.Listen();
     }
@@ -91,18 +89,6 @@ public class GeminiClient : MonoBehaviour {
         if (changed) ActiveChanged?.Invoke(active);
     }
 
-    public void LogStudyMarker(string label) {
-        StudyLog.Event("marker", new System.Collections.Generic.Dictionary<string, object> { { "label", label } });
-    }
-
-    public void LogProbeMarker(System.Collections.Generic.Dictionary<string, object> probe) {
-        if (probe == null) return;
-        var m = new System.Collections.Generic.Dictionary<string, object>(probe);
-        if (!m.ContainsKey("prompt_tokens_at_probe")) m["prompt_tokens_at_probe"] = Gemini.LastPromptTokens;
-        if (!m.ContainsKey("context_tokens_at_probe")) m["context_tokens_at_probe"] = Gemini.ContextTokens;
-        StudyLog.Event("marker", m);
-    }
-
     public void BeginRun(int compTrigger, int compTarget) {
         if (!_ready) return;
         Gemini.BeginRun(compTrigger, compTarget);
@@ -114,19 +100,6 @@ public class GeminiClient : MonoBehaviour {
         if (changed) ActiveChanged?.Invoke(true);
     }
 
-    public void LogCondition() {
-        var toolPanel = Scene.ToolPanel;
-        StudyLog.Event("study_condition", new System.Collections.Generic.Dictionary<string, object> {
-            { "memoryLayer", MemoryConfig.MemoryLayerEnabled },
-            { "assistantMotion", toolPanel != null ? toolPanel.AssistantSpeedName : "unknown" },
-            { "model", Gemini.ModelId },
-            { "compTrigger", Gemini.CompactTrigger },
-            { "compTarget", Gemini.CompactTarget },
-            { "contextCeiling", Gemini.ExhaustTokens },
-            { "contextWindow", Gemini.ContextWindowTokens }
-        });
-    }
-
     public void NotifyIntent() {
         _intentHeld = true;
         _intentEndAt = -1f;
@@ -134,11 +107,6 @@ public class GeminiClient : MonoBehaviour {
         if (connectPolicy == ConnectPolicy.OnFirstUse) return;
         if (!CanWarm) return;
 
-        StudyLog.Event("warm_trigger", new System.Collections.Generic.Dictionary<string, object> {
-            { "arm", ArmLabel },
-            { "source", "panel_open" },
-            { "initialised", Gemini.Initialised }
-        });
         QueueConnect();
     }
 
@@ -171,11 +139,6 @@ public class GeminiClient : MonoBehaviour {
         var status = Gemini.Status;
         if (status != _lastStatus) {
             _lastStatus = status;
-            HitchLog.Mark($"GeminiStatus {status}");
-            StudyLog.Event("status", new System.Collections.Generic.Dictionary<string, object> {
-                { "status", status.ToString() }
-            });
-
             StatusChanged?.Invoke(status);
         }
 

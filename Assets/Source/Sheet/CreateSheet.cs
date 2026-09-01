@@ -90,11 +90,6 @@ public class CreateSheet : MonoBehaviour
     {
         if (data == null) return;
 
-        using var span = StudySpan.Begin("sheet_build");
-        span.Detail("rows", rMax - rMin + 1);
-        span.Detail("cols", cMax - cMin + 1);
-        var buildClock = System.Diagnostics.Stopwatch.StartNew();
-
         if (_grow != null) { StopCoroutine(_grow); _grow = null; }
         _pendingGrow = -1f;
         _bars.Clear();
@@ -159,15 +154,9 @@ public class CreateSheet : MonoBehaviour
         for (int i = used; i < _pool.Count; i++) _pool[i].SetVisible(false);
 
         FitBounds();
-        long cubeMs = buildClock.ElapsedMilliseconds;
 
         if (_labels == null) _labels = new SheetLabels(transform);
         _labels.Rebuild(data, rMin, rMax, cMin, cMax, cellSize, cubeSide, baseY, labels);
-
-        buildClock.Stop();
-        span.Detail("cubes", used);
-        span.Detail("cubeMs", cubeMs);
-        span.Detail("labelMs", buildClock.ElapsedMilliseconds - cubeMs);
     }
 
     public void Repaint(DataSource data, Func<int, int, Color> topOf)
